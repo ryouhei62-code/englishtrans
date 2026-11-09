@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English Book Translator - 英語本 翻訳＆学習アプリ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & Noto Serif JP -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+JP:wght@400;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Noto Serif JP', 'serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20">
+          <i class="fa-solid fa-book-open text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-slate-900">BookTrans AI</h1>
+          <p class="text-xs text-slate-500">洋書カメラ翻訳・文単位の対訳表示</p>
+        </div>
+      </div>
+      
+      <!-- ボタン類 -->
+      <div class="flex items-center gap-2">
+        <button id="help-btn" class="text-slate-500 hover:text-slate-700 p-2 rounded-lg text-sm flex items-center gap-1.5 transition">
+          <i class="fa-regular fa-circle-question text-base"></i>
+          <span class="hidden sm:inline">使い方</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- 左カラム: 画像アップロード・プレビュー領域 -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-camera text-blue-600"></i> 洋書の写真を読み込み
+          </h2>
+          <span id="image-status" class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium">未選択</span>
+        </div>
+
+        <!-- ドロップエリア / プレビュー -->
+        <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 transition-colors rounded-xl p-4 flex flex-col items-center justify-center min-h-[280px] bg-slate-50/50 cursor-pointer relative overflow-hidden group">
+          <input type="file" id="image-input" accept="image/*" class="hidden">
+          
+          <!-- 初期表示コンテンツ -->
+          <div id="upload-placeholder" class="text-center p-6 flex flex-col items-center gap-3">
+            <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div>
+              <p class="font-medium text-slate-700 mb-1">本の一ページの画像をドロップ</p>
+              <p class="text-xs text-slate-400">または クリックして画像ファイルを選択</p>
+            </div>
+            <span class="text-[11px] bg-white border border-slate-200 text-slate-500 px-3 py-1 rounded-full shadow-xs">
+              JPG, PNG, WEBP 対応
+            </span>
+          </div>
+
+          <!-- 画像プレビュー表示 -->
+          <img id="image-preview" class="hidden w-full h-auto max-h-[450px] object-contain rounded-lg z-10" alt="書籍プレビュー">
+          
+          <!-- 画像変更時のオーバーレイ -->
+          <div id="reupload-overlay" class="hidden absolute inset-0 bg-slate-900/40 opacity-0 hover:opacity-100 transition-opacity z-20 flex items-center justify-center">
+            <span class="bg-white/90 backdrop-blur text-slate-800 text-xs font-semibold px-4 py-2 rounded-full shadow-lg">
+              <i class="fa-solid fa-arrows-rotate mr-1.5"></i> 別の画像に変更
+            </span>
+          </div>
+        </div>
+
+        <!-- アクションボタン -->
+        <div class="flex gap-2">
+          <button id="process-btn" disabled class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>文ごとに分割して翻訳</span>
+          </button>
+          <button id="clear-btn" class="px-4 py-3 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl transition text-sm" title="リセット">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+
+        <!-- 解析オプション -->
+        <div class="border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="auto-tts" class="rounded text-blue-600 focus:ring-blue-500">
+            <span>センテンス選択時に自動朗読</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 解析ヒント -->
+      <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-4 text-xs text-blue-900 leading-relaxed flex gap-3">
+        <i class="fa-solid fa-lightbulb text-blue-500 text-base flex-shrink-0 mt-0.5"></i>
+        <div>
+          <strong class="font-semibold block mb-0.5">読み取りのコツ:</strong>
+          文字が鮮明で傾きの少ない正面からの画像を選ぶと、正確なセンテンス分割と高精度の翻訳が得られます。
+        </div>
+      </div>
+    </section>
+
+    <!-- 右カラム: センテンス別 上下対訳表示領域 -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full min-h-[550px]">
+        
+        <!-- ヘッダー情報 ＆ 操作ボタン -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
+          <div>
+            <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-blue-600"></i> センテンス別 上下対訳
+            </h2>
+            <p id="sentence-count" class="text-xs text-slate-400 mt-0.5">全 0 センテンス</p>
+          </div>
+          
+          <div id="result-actions" class="hidden flex items-center gap-2">
+            <!-- 全体再生 -->
+            <button id="read-all-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-solid fa-play text-blue-600"></i> 順に朗読
+            </button>
+            <!-- コピー -->
+            <button id="copy-all-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+              <i class="fa-regular fa-copy"></i> 一括コピー
+            </button>
+          </div>
+        </div>
+
+        <!-- ロード中表示 -->
+        <div id="loading-state" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+          <p id="loading-text" class="font-medium text-slate-700">画像から文字を解析中...</p>
+          <p class="text-xs text-slate-400 mt-1">Gemini AIが英文をセンテンス単位に区切り、日本語訳を生成しています</p>
+        </div>
+
+        <!-- 空の状態 -->
+        <div id="empty-state" class="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-300 text-2xl mb-3">
+            <i class="fa-solid fa-language"></i>
+          </div>
+          <p class="font-medium text-slate-600 mb-1">ここに上下対比の翻訳結果が表示されます</p>
+          <p class="text-xs max-w-sm">左側のエリアから本の一ページの写真をアップロードし、「文ごとに分割して翻訳」を実行してください。</p>
+        </div>
+
+        <!-- センテンスリスト領域（英文と日本語訳を上下表示） -->
+        <div id="sentence-list" class="hidden flex-1 space-y-4 overflow-y-auto pr-1 max-h-[650px]">
+          <!-- JSで動的に追加 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 使い方ダイアログ (Modal) -->
+  <div id="help-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-blue-600"></i> アプリの使い方
+        </h3>
+        <button id="close-modal" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed text-slate-600">
+        <div class="flex gap-3">
+          <span class="w-5 h-5 bg-blue-100 text-blue-700 rounded-full font-bold flex items-center justify-center shrink-0">1</span>
+          <p><strong>写真を取り込む:</strong> 洋書のページ写真をアップロードまたはドラッグ＆ドロップします。</p>
+        </div>
+        <div class="flex gap-3">
+          <span class="w-5 h-5 bg-blue-100 text-blue-700 rounded-full font-bold flex items-center justify-center shrink-0">2</span>
+          <p><strong>上下対訳で確認:</strong> 上段に英文、下段に日本語訳がセンテンスごとに綺麗に並びます。</p>
+        </div>
+        <div class="flex gap-3">
+          <span class="w-5 h-5 bg-blue-100 text-blue-700 rounded-full font-bold flex items-center justify-center shrink-0">3</span>
+          <p><strong>発音を確認:</strong> 各文のスピーカーボタンをクリックすると、AI音声で英文が再生されます。</p>
+        </div>
+      </div>
+      <button id="confirm-modal" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition">
+        閉じる
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // App State
+    let currentImageBase64 = null;
+    let currentMimeType = 'image/jpeg';
+    let sentencesData = [];
+    let isPlayingAll = false;
+    let currentAudio = null;
+
+    // DOM Elements
+    const dropZone = document.getElementById('drop-zone');
+    const imageInput = document.getElementById('image-input');
+    const uploadPlaceholder = document.getElementById('upload-placeholder');
+    const imagePreview = document.getElementById('image-preview');
+    const reuploadOverlay = document.getElementById('reupload-overlay');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const imageStatus = document.getElementById('image-status');
+    const emptyState = document.getElementById('empty-state');
+    const loadingState = document.getElementById('loading-state');
+    const sentenceList = document.getElementById('sentence-list');
+    const resultActions = document.getElementById('result-actions');
+    const sentenceCount = document.getElementById('sentence-count');
+    const readAllBtn = document.getElementById('read-all-btn');
+    const copyAllBtn = document.getElementById('copy-all-btn');
+    const helpBtn = document.getElementById('help-btn');
+    const helpModal = document.getElementById('help-modal');
+    const closeModal = document.getElementById('close-modal');
+    const confirmModal = document.getElementById('confirm-modal');
+
+    // Drag & Drop Handling
+    dropZone.addEventListener('click', () => imageInput.click());
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50/50');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50/50');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFile(files[0]);
+    });
+
+    imageInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('画像ファイル (JPG, PNG等) を指定してください。');
+        return;
+      }
+
+      currentMimeType = file.type;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target.result;
+        currentImageBase64 = result.split(',')[1];
+        
+        imagePreview.src = result;
+        imagePreview.classList.remove('hidden');
+        uploadPlaceholder.classList.add('hidden');
+        reuploadOverlay.classList.remove('hidden');
+        
+        processBtn.disabled = false;
+        imageStatus.textContent = '準備完了';
+        imageStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 font-medium';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Clear Button
+    clearBtn.addEventListener('click', () => {
+      currentImageBase64 = null;
+      imageInput.value = '';
+      imagePreview.classList.add('hidden');
+      uploadPlaceholder.classList.remove('hidden');
+      reuploadOverlay.classList.add('hidden');
+      processBtn.disabled = true;
+      imageStatus.textContent = '未選択';
+      imageStatus.className = 'text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-medium';
+      
+      sentencesData = [];
+      renderSentences();
+    });
+
+    // Modal Control
+    helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+    closeModal.addEventListener('click', () => helpModal.classList.add('hidden'));
+    confirmModal.addEventListener('click', () => helpModal.classList.add('hidden'));
+
+    // Process Image with Gemini API (Structured Response)
+    processBtn.addEventListener('click', async () => {
+      if (!currentImageBase64) return;
+
+      emptyState.classList.add('hidden');
+      sentenceList.classList.add('hidden');
+      resultActions.classList.add('hidden');
+      loadingState.classList.remove('hidden');
+      processBtn.disabled = true;
+
+      try {
+        const prompt = `You are an expert OCR and literary English-to-Japanese translator.
+Analyze the provided image of an English book page.
+Extract all English text accurately, split it into clear natural individual sentences, and translate each sentence into natural Japanese.
+Output a JSON array of objects with "en" (English sentence) and "ja" (Japanese translation) fields. Preserve strict sentence ordering.`;
+
+        const payload = {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: currentMimeType,
+                    data: currentImageBase64
+                  }
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  "en": { "type": "STRING", "description": "Original English sentence" },
+                  "ja": { "type": "STRING", "description": "Japanese translation" }
+                },
+                "propertyOrdering": ["en", "ja"]
+              }
+            }
+          }
+        };
+
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        // Exponential backoff fetch
+        const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+          try {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            return res;
+          } catch (err) {
+            if (retries <= 0) throw err;
+            await new Promise(r => setTimeout(r, delay));
+            return fetchWithRetry(url, options, retries - 1, delay * 2);
+          }
+        };
+
+        const response = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+          const jsonText = result.candidates[0].content.parts[0].text;
+          sentencesData = JSON.parse(jsonText);
+          renderSentences();
+        } else {
+          throw new Error('解析データの取得に失敗しました。');
+        }
+
+      } catch (error) {
+        console.error(error);
+        alert('OCR認識または翻訳中にエラーが発生しました: ' + error.message);
+        emptyState.classList.remove('hidden');
+      } finally {
+        loadingState.classList.add('hidden');
+        processBtn.disabled = false;
+      }
+    });
+
+    // Render Sentences (英文と日本語訳を上下に表示)
+    function renderSentences() {
+      if (!sentencesData || sentencesData.length === 0) {
+        emptyState.classList.remove('hidden');
+        sentenceList.classList.add('hidden');
+        resultActions.classList.add('hidden');
+        sentenceCount.textContent = '全 0 センテンス';
+        return;
+      }
+
+      sentenceList.innerHTML = '';
+      sentenceCount.textContent = `全 ${sentencesData.length} センテンス`;
+
+      sentencesData.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = "group bg-slate-50 hover:bg-blue-50/30 border border-slate-200 hover:border-blue-200 rounded-xl p-4 transition-all duration-200 flex flex-col gap-3 relative shadow-2xs";
+
+        card.innerHTML = `
+          <!-- 上部インデックス ＆ アクション -->
+          <div class="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 bg-blue-600 text-white rounded-md text-[11px] font-bold flex items-center justify-center">
+                ${index + 1}
+              </span>
+              <span class="text-xs font-semibold text-slate-500 tracking-wider">SENTENCE ${index + 1}</span>
+            </div>
+
+            <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+              <button onclick="playTTS(${index})" title="発音を聞く" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition">
+                <i class="fa-solid fa-volume-high text-sm"></i>
+              </button>
+              <button onclick="copySentence(${index})" title="文をコピー" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition">
+                <i class="fa-regular fa-copy text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 上段: 英文 -->
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold tracking-wider text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded border border-blue-100">ENGLISH</span>
+            <p class="font-serif text-slate-900 text-base leading-relaxed pt-1">
+              ${escapeHtml(item.en)}
+            </p>
+          </div>
+
+          <!-- 下段: 日本語訳 -->
+          <div class="space-y-1 pt-1 border-t border-slate-200/60">
+            <span class="text-[10px] font-bold tracking-wider text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">JAPANESE</span>
+            <p class="text-slate-700 text-sm leading-relaxed pt-1">
+              ${escapeHtml(item.ja)}
+            </p>
+          </div>
+        `;
+
+        // クリックイベント（自動朗読）
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('button')) return;
+          const autoTTS = document.getElementById('auto-tts').checked;
+          if (autoTTS) playTTS(index);
+        });
+
+        sentenceList.appendChild(card);
+      });
+
+      sentenceList.classList.remove('hidden');
+      resultActions.classList.remove('hidden');
+    }
+
+    // HTML エスケープ
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // TTS朗読機能 (Gemini Audio API & Fallback Web Speech API)
+    async function playTTS(index) {
+      if (!sentencesData[index]) return;
+      const text = sentencesData[index].en;
+
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+
+      try {
+        const payload = {
+          contents: [{
+            parts: [{ text: `Say clearly: ${text}` }]
+          }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: "Aoede" }
+              }
+            }
+          },
+          model: "gemini-2.5-flash-preview-tts"
+        };
+
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        const part = result?.candidates?.[0]?.content?.parts?.[0];
+
+        if (part?.inlineData?.data && part?.inlineData?.mimeType) {
+          const mimeType = part.inlineData.mimeType;
+          const rateMatch = mimeType.match(/rate=(\d+)/);
+          const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+
+          const pcmData = base64ToArrayBuffer(part.inlineData.data);
+          const pcm16 = new Int16Array(pcmData);
+          const wavBlob = pcmToWav(pcm16, sampleRate);
+          const audioUrl = URL.createObjectURL(wavBlob);
+
+          currentAudio = new Audio(audioUrl);
+          currentAudio.play();
+        } else {
+          fallbackWebSpeech(text);
+        }
+      } catch (e) {
+        console.warn('Gemini TTS Failed, using Web Speech API fallback', e);
+        fallbackWebSpeech(text);
+      }
+    }
+
+    // Web Speech API Fallback
+    function fallbackWebSpeech(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Base64 to ArrayBuffer Helper
+    function base64ToArrayBuffer(base64) {
+      const binaryString = atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    // Convert PCM 16bit to WAV Blob
+    function pcmToWav(pcm16Data, sampleRate) {
+      const buffer = new ArrayBuffer(44 + pcm16Data.length * 2);
+      const view = new DataView(buffer);
+
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + pcm16Data.length * 2, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(view, 36, 'data');
+      view.setUint32(40, pcm16Data.length * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
+        view.setInt16(offset, pcm16Data[i], true);
+      }
+
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    // 単一文コピー
+    function copySentence(index) {
+      const item = sentencesData[index];
+      if (!item) return;
+      const text = `[English]\n${item.en}\n\n[Japanese]\n${item.ja}`;
+      copyToClipboard(text);
+    }
+
+    // 全文コピー
+    copyAllBtn.addEventListener('click', () => {
+      if (!sentencesData.length) return;
+      const fullText = sentencesData.map((item, i) => `(${i+1})\nEN: ${item.en}\nJA: ${item.ja}`).join('\n\n');
+      copyToClipboard(fullText);
+    });
+
+    // クリップボード書き込み
+    function copyToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        alert('クリップボードにコピーしました！');
+      } catch (err) {
+        console.error('Copy failed', err);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // 全文の順番朗読
+    readAllBtn.addEventListener('click', async () => {
+      if (!sentencesData.length) return;
+      
+      if (isPlayingAll) {
+        isPlayingAll = false;
+        if (currentAudio) currentAudio.pause();
+        window.speechSynthesis?.cancel();
+        readAllBtn.innerHTML = `<i class="fa-solid fa-play text-blue-600"></i> 順に朗読`;
+        return;
+      }
+
+      isPlayingAll = true;
+      readAllBtn.innerHTML = `<i class="fa-solid fa-stop text-red-500"></i> 停止`;
+
+      for (let i = 0; i < sentencesData.length; i++) {
+        if (!isPlayingAll) break;
+        
+        const cards = sentenceList.children;
+        if (cards[i]) {
+          cards[i].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          cards[i].classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+        }
+
+        await new Promise(resolve => {
+          playTTS(i);
+          const charCount = sentencesData[i].en.length;
+          const waitTime = Math.max(2500, charCount * 75);
+          setTimeout(resolve, waitTime);
+        });
+
+        if (cards[i]) {
+          cards[i].classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+        }
+      }
+
+      isPlayingAll = false;
+      readAllBtn.innerHTML = `<i class="fa-solid fa-play text-blue-600"></i> 順に朗読`;
+    });
+  </script>
+</body>
+</html>
